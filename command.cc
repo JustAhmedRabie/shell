@@ -28,6 +28,52 @@
 #include <vector>
 #include <wordexp.h>
 
+static int g_logFd = -1;
+
+static void sigchld_handler(int /*sig*/) {
+  int saved_errno = errno;
+  pid_t pid;
+  int status;
+
+  while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+    if (g_logFd >= 0) {
+      char timeStr[64];
+      time_t now = time(NULL);
+      struct tm *tm_info = localtime(&now);
+      strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", tm_info);
+
+      char buf[256];
+      int n;
+      if (WIFEXITED(status)) {
+        n = snprintf(buf, sizeof(buf),
+                     "[%s] child %d terminated, exit status %d\n", timeStr,
+                     (int)pid, WEXITSTATUS(status));
+      } else if (WIFSIGNALED(status)) {
+        n = snprintf(buf, sizeof(buf),
+                     "[%s] child %d terminated by signal %d\n", timeStr,
+                     (int)pid, WTERMSIG(status));
+      } else {
+        n = snprintf(buf, sizeof(buf), "[%s] child %d terminated\n", timeStr,
+                     (int)pid);
+      }
+      if (n > 0)
+        (void)!write(g_logFd, buf, n);
+    }
+  }
+  errno = saved_errno;
+}
+
+static void install_sigchld_handler() {
+  g_logFd = open("shell.log", O_WRONLY | O_CREAT | O_APPEND, 0644);
+
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = sigchld_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+  sigaction(SIGCHLD, &sa, NULL);
+}
+
 void parse(std::vector<Token> &tokens) {
   Command &cmd = Command::_currentCommand;
   SimpleCommand *simple = new SimpleCommand();
@@ -366,6 +412,7 @@ void Command::execute() {
 }
 
 void Command::prompt() {
+  install_sigchld_handler();
   signal(SIGINT, SIG_IGN);
 
   std::string input;
