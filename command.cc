@@ -229,6 +229,33 @@ void Command::execute() {
 
   print();
 
+  /* Built-ins run in the shell process itself. */
+  if (_numberOfSimpleCommands == 1) {
+    SimpleCommand *c = _simpleCommands[0];
+    if (c->_numberOfArguments > 0) {
+      std::string name = c->_arguments[0];
+
+      if (name == "exit") {
+        int code = (c->_numberOfArguments > 1) ? atoi(c->_arguments[1]) : 0;
+        printf("Good bye!!\n");
+        fflush(stdout);
+        clear();
+        exit(code);
+      }
+      if (name == "cd") {
+        const char *dir =
+            (c->_numberOfArguments > 1) ? c->_arguments[1] : getenv("HOME");
+        if (!dir) {
+          fprintf(stderr, "cd: HOME not set\n");
+        } else if (chdir(dir) != 0) {
+          fprintf(stderr, "cd: %s: %s\n", dir, strerror(errno));
+        }
+        clear();
+        return;
+      }
+    }
+  }
+
   int numCmds = _numberOfSimpleCommands;
   int prevRead = -1;
   pid_t lastPid = -1;
