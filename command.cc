@@ -29,17 +29,99 @@
 #include <wordexp.h>
 
 void parse(std::vector<Token> &tokens) {
-  Command currentCommand;
-  SimpleCommand *currentSimpleCommand = new SimpleCommand();
+  Command &cmd = Command::_currentCommand;
+  SimpleCommand *simple = new SimpleCommand();
+  bool error = false;
 
-  currentCommand.execute();
-  /*
-    Implement this function
-    you must parse for all possible tokens scenario
-    right now command.execute only print the format , you will inject it in your
-    logic.
+  for (size_t i = 0; i < tokens.size() && !error; ++i) {
+    Token &t = tokens[i];
+    switch (t.type) {
+    case TOKEN_EOF:
+      i = tokens.size();
+      break;
 
-  */
+    case TOKEN_COMMAND:
+    case TOKEN_ARGUMENT:
+      simple->insertArgument(strdup(t.value.c_str()));
+      break;
+
+    case TOKEN_PIPE:
+      if (simple->_numberOfArguments == 0) {
+        fprintf(stderr, "myshell: syntax error near unexpected token `|'\n");
+        error = true;
+      } else {
+        cmd.insertSimpleCommand(simple);
+        simple = new SimpleCommand();
+      }
+      break;
+
+    case TOKEN_REDIRECT:
+    case TOKEN_APPEND:
+    case TOKEN_INPUT:
+    case TOKEN_ERROR:
+    case TOKEN_REDIRECT_AND_ERROR: {
+      if (i + 1 >= tokens.size()) {
+        fprintf(stderr,
+                "myshell: syntax error: missing filename after redirection\n");
+        error = true;
+        break;
+      }
+      TokenType nt = tokens[i + 1].type;
+      if (nt != TOKEN_COMMAND && nt != TOKEN_ARGUMENT) {
+        fprintf(stderr,
+                "myshell: syntax error: missing filename after redirection\n");
+        error = true;
+        break;
+      }
+      ++i;
+      const std::string &fname = tokens[i].value;
+      if (t.type == TOKEN_REDIRECT) {
+        cmd._outFile = strdup(fname.c_str());
+        cmd._append = 0;
+      } else if (t.type == TOKEN_APPEND) {
+        cmd._outFile = strdup(fname.c_str());
+        cmd._append = 1;
+      } else if (t.type == TOKEN_INPUT) {
+        cmd._inputFile = strdup(fname.c_str());
+      } else if (t.type == TOKEN_ERROR) {
+        cmd._errFile = strdup(fname.c_str());
+      } else {
+        cmd._outFile = strdup(fname.c_str());
+        cmd._errFile = strdup(fname.c_str());
+        cmd._out_error = 1;
+        cmd._append = 1;
+      }
+      break;
+    }
+
+    case TOKEN_BACKGROUND:
+      cmd._background = 1;
+      break;
+    }
+  }
+
+  if (error) {
+    for (int j = 0; j < simple->_numberOfArguments; ++j)
+      free(simple->_arguments[j]);
+    free(simple->_arguments);
+    free(simple);
+    cmd.clear();
+    return;
+  }
+
+  if (simple->_numberOfArguments == 0) {
+    if (cmd._numberOfSimpleCommands > 0) {
+      fprintf(stderr,
+              "myshell: syntax error: unexpected end of input after pipe\n");
+    }
+    free(simple->_arguments);
+    free(simple);
+    cmd.clear();
+    return;
+  }
+
+  cmd.insertSimpleCommand(simple);
+  cmd.execute();
 }
 
 SimpleCommand::SimpleCommand() {
