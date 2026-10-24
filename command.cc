@@ -230,15 +230,33 @@ void Command::execute() {
   print();
 
   int numCmds = _numberOfSimpleCommands;
+  int prevRead = -1;
   pid_t lastPid = -1;
 
   for (int i = 0; i < numCmds; ++i) {
+    int pipefd[2] = {-1, -1};
+    bool hasNext = (i < numCmds - 1);
+
+    if (hasNext && pipe(pipefd) < 0) {
+      perror("pipe");
+      if (prevRead != -1)
+        close(prevRead);
+      clear();
+      return;
+    }
+
     fflush(stdout);
     fflush(stderr);
 
     pid_t pid = fork();
     if (pid < 0) {
       perror("fork");
+      if (prevRead != -1)
+        close(prevRead);
+      if (hasNext) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+      }
       clear();
       return;
     }
@@ -246,8 +264,11 @@ void Command::execute() {
     if (pid == 0) {
       signal(SIGINT, SIG_DFL);
 
-      /* stdin */
-      if (_inputFile) {
+      /* stdin: previous pipe wins over _inputFile */
+      if (prevRead != -1) {
+        dup2(prevRead, STDIN_FILENO);
+        close(prevRead);
+      } else if (_inputFile) {
         int fd = open(_inputFile, O_RDONLY);
         if (fd < 0) {
           fprintf(stderr, "myshell: %s: %s\n", _inputFile, strerror(errno));
@@ -269,7 +290,12 @@ void Command::execute() {
         dup2(fd, STDERR_FILENO);
         close(fd);
       } else {
-        if (_outFile) {
+        /* stdout: next pipe wins over _outFile */
+        if (hasNext) {
+          close(pipefd[0]);
+          dup2(pipefd[1], STDOUT_FILENO);
+          close(pipefd[1]);
+        } else if (_outFile) {
           int flags = O_WRONLY | O_CREAT | (_append ? O_APPEND : O_TRUNC);
           int fd = open(_outFile, flags, 0644);
           if (fd < 0) {
@@ -296,7 +322,15 @@ void Command::execute() {
       _exit(1);
     }
 
-    lastPid = pid;
+    /* parent: drop ends we don't use, then remember read end */
+    if (prevRead != -1)
+      close(prevRead);
+    if (hasNext) {
+      close(pipefd[1]);
+      prevRead = pipefd[0];
+    } else {
+      lastPid = pid;
+    }
   }
 
   if (lastPid > 0) {
@@ -307,6 +341,7 @@ void Command::execute() {
 
   clear();
 }
+
 void Command::prompt() {
   std::string input;
   while (true) {
