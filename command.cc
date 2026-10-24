@@ -222,7 +222,44 @@ void Command::print() {
 }
 
 void Command::execute() {
+  if (_numberOfSimpleCommands == 0) {
+    clear();
+    return;
+  }
+
   print();
+
+  int numCmds = _numberOfSimpleCommands;
+  pid_t lastPid = -1;
+
+  for (int i = 0; i < numCmds; ++i) {
+    fflush(stdout);
+    fflush(stderr);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+      perror("fork");
+      clear();
+      return;
+    }
+
+    if (pid == 0) {
+      signal(SIGINT, SIG_DFL);
+      execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
+      fprintf(stderr, "myshell: %s: %s\n", _simpleCommands[i]->_arguments[0],
+              strerror(errno));
+      _exit(1);
+    }
+
+    lastPid = pid;
+  }
+
+  if (lastPid > 0) {
+    int status;
+    while (waitpid(lastPid, &status, 0) < 0 && errno == EINTR) {
+    }
+  }
+
   clear();
 }
 void Command::prompt() {
