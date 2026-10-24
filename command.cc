@@ -264,7 +264,6 @@ void Command::execute() {
     if (pid == 0) {
       signal(SIGINT, SIG_DFL);
 
-      /* stdin: previous pipe wins over _inputFile */
       if (prevRead != -1) {
         dup2(prevRead, STDIN_FILENO);
         close(prevRead);
@@ -278,7 +277,6 @@ void Command::execute() {
         close(fd);
       }
 
-      /* stdout + stderr */
       if (_out_error && _errFile) {
         int flags = O_WRONLY | O_CREAT | (_append ? O_APPEND : O_TRUNC);
         int fd = open(_errFile, flags, 0644);
@@ -290,7 +288,6 @@ void Command::execute() {
         dup2(fd, STDERR_FILENO);
         close(fd);
       } else {
-        /* stdout: next pipe wins over _outFile */
         if (hasNext) {
           close(pipefd[0]);
           dup2(pipefd[1], STDOUT_FILENO);
@@ -322,7 +319,6 @@ void Command::execute() {
       _exit(1);
     }
 
-    /* parent: drop ends we don't use, then remember read end */
     if (prevRead != -1)
       close(prevRead);
     if (hasNext) {
@@ -333,7 +329,7 @@ void Command::execute() {
     }
   }
 
-  if (lastPid > 0) {
+  if (!_background && lastPid > 0) {
     int status;
     while (waitpid(lastPid, &status, 0) < 0 && errno == EINTR) {
     }
