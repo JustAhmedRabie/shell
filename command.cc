@@ -366,6 +366,8 @@ void Command::execute() {
 }
 
 void Command::prompt() {
+  signal(SIGINT, SIG_IGN);
+
   std::string input;
   while (true) {
     printf("myshell> ");
