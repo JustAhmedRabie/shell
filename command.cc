@@ -74,6 +74,37 @@ static void install_sigchld_handler() {
   sigaction(SIGCHLD, &sa, NULL);
 }
 
+static bool isFullyQuoted(const std::string &s) {
+  if (s.size() < 2)
+    return false;
+  char f = s.front(), b = s.back();
+  return (f == '"' && b == '"') || (f == '\'' && b == '\'');
+}
+
+static std::string stripQuotes(const std::string &s) {
+  return isFullyQuoted(s) ? s.substr(1, s.size() - 2) : s;
+}
+
+static void expandWildcards(const std::string &word,
+                            std::vector<std::string> &out) {
+  if (word.find('*') == std::string::npos &&
+      word.find('?') == std::string::npos) {
+    out.push_back(word);
+    return;
+  }
+
+  glob_t g;
+  memset(&g, 0, sizeof(g));
+  int ret = glob(word.c_str(), GLOB_NOCHECK, NULL, &g);
+  if (ret == 0) {
+    for (size_t i = 0; i < g.gl_pathc; ++i)
+      out.push_back(g.gl_pathv[i]);
+  } else {
+    out.push_back(word);
+  }
+  globfree(&g);
+}
+
 void parse(std::vector<Token> &tokens) {
   Command &cmd = Command::_currentCommand;
   SimpleCommand *simple = new SimpleCommand();
@@ -87,9 +118,17 @@ void parse(std::vector<Token> &tokens) {
       break;
 
     case TOKEN_COMMAND:
-    case TOKEN_ARGUMENT:
-      simple->insertArgument(strdup(t.value.c_str()));
+    case TOKEN_ARGUMENT: {
+      if (isFullyQuoted(t.value)) {
+        simple->insertArgument(strdup(stripQuotes(t.value).c_str()));
+      } else {
+        std::vector<std::string> expanded;
+        expandWildcards(t.value, expanded);
+        for (auto &e : expanded)
+          simple->insertArgument(strdup(e.c_str()));
+      }
       break;
+    }
 
     case TOKEN_PIPE:
       if (simple->_numberOfArguments == 0) {
