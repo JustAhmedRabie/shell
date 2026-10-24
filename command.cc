@@ -245,6 +245,51 @@ void Command::execute() {
 
     if (pid == 0) {
       signal(SIGINT, SIG_DFL);
+
+      /* stdin */
+      if (_inputFile) {
+        int fd = open(_inputFile, O_RDONLY);
+        if (fd < 0) {
+          fprintf(stderr, "myshell: %s: %s\n", _inputFile, strerror(errno));
+          _exit(1);
+        }
+        dup2(fd, STDIN_FILENO);
+        close(fd);
+      }
+
+      /* stdout + stderr */
+      if (_out_error && _errFile) {
+        int flags = O_WRONLY | O_CREAT | (_append ? O_APPEND : O_TRUNC);
+        int fd = open(_errFile, flags, 0644);
+        if (fd < 0) {
+          fprintf(stderr, "myshell: %s: %s\n", _errFile, strerror(errno));
+          _exit(1);
+        }
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
+        close(fd);
+      } else {
+        if (_outFile) {
+          int flags = O_WRONLY | O_CREAT | (_append ? O_APPEND : O_TRUNC);
+          int fd = open(_outFile, flags, 0644);
+          if (fd < 0) {
+            fprintf(stderr, "myshell: %s: %s\n", _outFile, strerror(errno));
+            _exit(1);
+          }
+          dup2(fd, STDOUT_FILENO);
+          close(fd);
+        }
+        if (_errFile) {
+          int fd = open(_errFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          if (fd < 0) {
+            fprintf(stderr, "myshell: %s: %s\n", _errFile, strerror(errno));
+            _exit(1);
+          }
+          dup2(fd, STDERR_FILENO);
+          close(fd);
+        }
+      }
+
       execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
       fprintf(stderr, "myshell: %s: %s\n", _simpleCommands[i]->_arguments[0],
               strerror(errno));
