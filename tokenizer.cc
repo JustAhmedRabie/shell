@@ -1,8 +1,8 @@
 #include "tokenizer.h"
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
-std::vector<Token> tokenize(const std::string &input)
+std::vector<Token> tokenize(const std::string& input)
 {
     std::vector<Token> tokens;
     std::istringstream stream(input);
@@ -27,35 +27,29 @@ std::vector<Token> tokenize(const std::string &input)
         else if (word == ">>&")
             token.type = TOKEN_REDIRECT_AND_ERROR;
         else
+        {
+            if (!tokens.empty())
             {
-                if (!tokens.empty())
-                {
-                    Token &prev = tokens.back();
-                    if (prev.type == TOKEN_REDIRECT ||
-                        prev.type == TOKEN_APPEND ||
-                        prev.type == TOKEN_INPUT ||
-                        prev.type == TOKEN_ERROR || 
-                        prev.type == TOKEN_REDIRECT_AND_ERROR ||
-                        prev.type == TOKEN_COMMAND || 
-                        prev.type == TOKEN_ARGUMENT || 
-                        word[0] == '-' ||
-                        word.find('/') != std::string::npos ||
-                        word.find('.') != std::string::npos
+                Token& prev = tokens.back();
+                if (prev.type == TOKEN_REDIRECT || prev.type == TOKEN_APPEND || prev.type == TOKEN_INPUT ||
+                    prev.type == TOKEN_ERROR || prev.type == TOKEN_REDIRECT_AND_ERROR || prev.type == TOKEN_COMMAND ||
+                    prev.type == TOKEN_ARGUMENT || word[0] == '-' || word.find('/') != std::string::npos ||
+                    word.find('.') != std::string::npos
 
-                    )
-                    {
-                        token.type = TOKEN_ARGUMENT;
-                    }
-                    else
-                    {
-                        token.type = TOKEN_COMMAND;
-                    }
+                )
+                {
+                    token.type = TOKEN_ARGUMENT;
                 }
                 else
                 {
                     token.type = TOKEN_COMMAND;
                 }
             }
+            else
+            {
+                token.type = TOKEN_COMMAND;
+            }
+        }
 
         token.value = word;
         tokens.push_back(token);

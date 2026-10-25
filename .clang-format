@@ -1,0 +1,93 @@
+---
+Language: Cpp
+
+# Base style
+BasedOnStyle: LLVM
+
+# General
+Standard: Latest
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 130
+IndentCaseLabels: true
+IndentGotoLabels: false
+
+# Braces (Allman)
+BreakBeforeBraces: Allman
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# Functions
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortLambdasOnASingleLine: Empty
+
+# Switch statements
+IndentCaseBlocks: true
+
+# Namespaces
+NamespaceIndentation: All
+CompactNamespaces: false
+
+# Classes
+AccessModifierOffset: -4
+EmptyLineBeforeAccessModifier: LogicalBlock
+EmptyLineAfterAccessModifier: Never
+
+# Includes
+SortIncludes: true
+IncludeBlocks: Preserve
+
+# Pointers & references
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Spaces
+SpaceBeforeParens: ControlStatements
+SpaceBeforeAssignmentOperators: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceAfterCStyleCast: true
+SpaceBeforeCpp11BracedList: false
+
+# Constructor initializer lists
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: Never
+
+# Templates
+AlwaysBreakTemplateDeclarations: Yes
+
+# Alignment
+AlignAfterOpenBracket: Align
+AlignOperands: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignTrailingComments: true
+
+# Empty lines
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+
+# Misc
+Cpp11BracedListStyle: true
+FixNamespaceComments: true
+ReflowComments: true
+SeparateDefinitionBlocks: Always
+SortUsingDeclarations: Lexicographic
